@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Para M.</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght=0,400;0,500;1,400&family=Montserrat:wght=200;300;400&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #090103;
+            overflow-x: hidden;
+        }
+        .font-serif-elegant {
+            font-family: 'Playfair Display', serif;
+        }
+        
+        #card-container {
+            position: relative;
+            overflow: hidden;
+        }
+
+        #particle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .content-layer {
+            position: relative;
+            z-index: 10; 
+            background-color: rgba(8, 1, 3, 0.95);
+            backdrop-filter: blur(30px);
+            border: 1px solid rgba(244, 63, 94, 0.06);
+            box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(158, 10, 43, 0.05);
+        }
+
+        .fade-in {
+            animation: fadeInEffect 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes fadeInEffect {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .shake {
+            animation: soft-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes soft-shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-2px, 0, 0); }
+            40%, 60% { transform: translate3d(2px, 0, 0); }
+        }
+        
+        .blinking-cursor {
+            font-weight: 300;
+            margin-left: 2px;
+            animation: soft-blink 0.8s step-end infinite;
+        }
+        @keyframes soft-blink {
+            from, to { color: transparent; }
+            50% { color: #f43f5e; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6">
+
+    <div id="card-container" class="w-full max-w-xl bg-transparent rounded-2xl transition-all duration-1000">
+        <canvas id="particle-canvas"></canvas>
+        
+        <div id="setup-screen" class="p-12 md:p-16 content-layer rounded-2xl text-center">
+            <header class="space-y-4">
+                <h1 class="font-serif-elegant italic text-3xl md:text-4xl text-zinc-200 tracking-wide">Un mensaje para ti</h1>
+                <div class="w-10 h-[1px] bg-rose-900/40 mx-auto my-5"></div>
+                <p class="text-zinc-500 text-[10px] uppercase tracking-[0.25em] font-light">Por favor, confirma tu identidad</p>
+            </header>
+            
+            <div class="mt-12 max-w-xs mx-auto">
+                <input type="text" id="recipient-name" placeholder="Escribe tus DOS nombres..." class="w-full text-center px-4 py-3 bg-transparent border-b border-zinc-800/60 focus:border-rose-900/60 text-zinc-200 outline-none transition duration-500 font-light placeholder:text-zinc-700 tracking-widest text-sm uppercase">
+                <p class="text-[9px] text-zinc-600 mt-2 tracking-wider font-light">Nota: Es necesario ingresar ambos nombres para continuar.</p>
+            </div>
+            
+            <div id="error-message" class="text-rose-400/60 text-[11px] font-light text-center mt-4 h-5 tracking-wide italic"></div>
+            
+            <div class="mt-6 max-w-xs mx-auto">
+                <button id="generate-card-btn" class="w-full bg-zinc-950 hover:bg-zinc-900 text-zinc-400 hover:text-zinc-200 font-light py-3.5 px-6 rounded-xl border border-zinc-900 transition-all duration-500 uppercase tracking-[0.2em] text-[10px]">
+                    Abrir espacio
+                </button>
+            </div>
+        </div>
+
+        <div id="interactive-card-screen" class="hidden p-12 md:p-16 content-layer rounded-2xl">
+            <button id="music-toggle-btn" class="absolute top-6 right-6 text-zinc-500 hover:text-rose-400 transition-colors z-20 p-2">
+                <svg id="sound-on-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                <svg id="sound-off-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="hidden"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+            </button>
+
+            <header class="text-center space-y-2">
+                <h2 id="welcome-message" class="font-serif-elegant italic text-3xl text-zinc-100 tracking-wide"></h2>
+                <h3 id="day-subtitle" class="font-light text-[9px] text-rose-400/70 tracking-[0.3em] uppercase opacity-0 transition-opacity duration-1500"></h3>
+            </header>
+            
+            <div id="message-container" class="mt-12 space-y-7 text-center text-zinc-400 font-light text-sm md:text-base leading-relaxed min-h-[22rem] flex flex-col justify-center items-center">
+                </div>
+            
+            <footer class="mt-10 text-center h-10">
+                 <button id="reset-btn" class="bg-transparent border border-zinc-900 hover:border-rose-950 text-zinc-600 hover:text-zinc-400 font-light py-2 px-6 rounded text-[9px] uppercase tracking-[0.2em] transition-all duration-700 opacity-0 pointer-events-none">
+                     Guardar momento
+                 </button>
+            </footer>
+        </div>
+    </div>
+
+    <audio id="birthday-music" loop preload="auto">
+        <source src="https://ia600900.us.archive.org/34/items/feliz-cumplean-os-para-dedicar-cumplean-os-feliz-version-instrumental-2/FELIZ%20CUMPLEA%C3%91OS%20-%20Para%20Dedicar%20CUMPLEA%C3%91OS%20FELIZ%20%20-%20%28Versi%C3%B3n%20INSTRUMENTAL%29%20%E2%99%AA%E2%99%AB%20%232%20%F0%9F%8E%81%F0%9F%8E%89%F0%9F%8E%82.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+    const CORRECT_NAME = "melissa noelia"; 
+    
+    // NARRATIVA ATEMPORAL, SINCERA Y EXCLUSIVA DE CUMPLEAÑOS
+    const BIRTHDAY_MESSAGES = [
+        "Hoy es tu día, y aunque los kilómetros nos impidan cruzar una mirada o darnos ese abrazo que tanta falta me hace, quiero que sientas que no hay distancia capaz de alejarme de ti.",
+        "Qué bonito es ver cómo celebras un año más en este mundo y saber que tengo la fortuna de estar en tu vida, acompañándote y compartiendo tu felicidad aunque sea desde aquí.",
+        "No hay un solo instante en el que mi mente no esté fija en ti, imaginando tu sonrisa y deseando que sientas toda la calidez de mi corazón mientras celebro el día en que naciste.",
+        "Feliz cumpleaños, mi amor. Que la vida te llene de bendiciones y te sonría siempre tanto como tú me haces sonreír a mí. Te amo con toda mi alma."
+    ];
+
+    // --- DOM ---
+    const setupScreen = document.getElementById('setup-screen');
+    const interactiveCardScreen = document.getElementById('interactive-card-screen');
+    const generateBtn = document.getElementById('generate-card-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const errorMessage = document.getElementById('error-message');
+    const recipientNameInput = document.getElementById('recipient-name');
+    const welcomeMessage = document.getElementById('welcome-message');
+    const daySubtitle = document.getElementById('day-subtitle');
+    const messageContainer = document.getElementById('message-container');
+    const birthdayMusic = document.getElementById('birthday-music');
+    const musicToggleBtn = document.getElementById('music-toggle-btn');
+    const soundOnIcon = document.getElementById('sound-on-icon');
+    const soundOffIcon = document.getElementById('sound-off-icon');
+
+    // --- LIENZO DE PARTÍCULAS ESTELARES ---
+    const canvas = document.getElementById('particle-canvas');
+    const ctx = canvas.getContext('2d');
+    let particles = [];
+
+    function setupCanvasSize() {
+        const parent = canvas.parentElement;
+        if (parent) {
+            canvas.width = parent.offsetWidth;
+            canvas.height = parent.offsetHeight;
+        }
+    }
+
+    function createParticle() {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 1.2 + 0.5;
+        const colors = ["rgba(244, 63, 94, 0.15)", "rgba(255, 255, 255, 0.1)"];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const speedX = (Math.random() - 0.5) * 0.15;
+        const speedY = (Math.random() - 0.5) * 0.15;
+        particles.push({ x, y, radius, color, speedX, speedY });
+    }
+
+    function animateParticles() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            p.x += p.speedX;
+            p.y += p.speedY;
+            if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+            if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+        }
+        requestAnimationFrame(animateParticles);
+    }
+    
+    setupCanvasSize();
+    for (let i = 0; i < 50; i++) createParticle();
+    animateParticles();
+    window.addEventListener('resize', setupCanvasSize);
+
+    // --- MÁQUINA DE ESCRIBIR ---
+    function typeWriter(element, text, speed, onComplete) {
+        let i = 0;
+        element.innerHTML = '<span class="blinking-cursor">|</span>';
+        const typing = setInterval(() => {
+            if (i < text.length) {
+                element.innerHTML = text.substring(0, i + 1) + '<span class="blinking-cursor">|</span>';
+                i++;
+            } else {
+                clearInterval(typing);
+                element.innerHTML = text;
+                if (onComplete) onComplete();
+            }
+        }, speed);
+    }
+
+    function handleOpenAttempt() {
+        const inputName = recipientNameInput.value.trim().toLowerCase();
+        recipientNameInput.classList.remove('shake');
+        
+        if (inputName.includes('melissa') && inputName.includes('noelia')) {
+            errorMessage.textContent = '';
+            welcomeMessage.textContent = "Para ti, mi amor"; 
+            switchScreens();
+        } else {
+            errorMessage.textContent = 'Por favor, ingresa tus dos nombres completos.';
+            void recipientNameInput.offsetWidth; 
+            recipientNameInput.classList.add('shake');
+        }
+    }
+
+    generateBtn.addEventListener('click', handleOpenAttempt);
+    recipientNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') handleOpenAttempt();
+    });
+
+    resetBtn.addEventListener('click', () => {
+        interactiveCardScreen.classList.add('hidden');
+        setupScreen.classList.remove('hidden');
+        recipientNameInput.value = '';
+        messageContainer.innerHTML = '';
+        
+        birthdayMusic.pause();
+        birthdayMusic.currentTime = 0;
+        resetBtn.classList.add('opacity-0', 'pointer-events-none');
+        daySubtitle.style.opacity = '0'; 
+
+        soundOnIcon.classList.remove('hidden');
+        soundOffIcon.classList.add('hidden');
+    });
+
+    musicToggleBtn.addEventListener('click', () => {
+        if (birthdayMusic.paused) {
+            birthdayMusic.play();
+            soundOnIcon.classList.remove('hidden');
+            soundOffIcon.classList.add('hidden');
+        } else {
+            birthdayMusic.pause();
+            soundOnIcon.classList.add('hidden');
+            soundOffIcon.classList.remove('hidden');
+        }
+    });
+
+    function switchScreens() {
+        setupScreen.classList.add('hidden');
+        interactiveCardScreen.classList.remove('hidden');
+        interactiveCardScreen.classList.add('fade-in');
+        
+        const playPromise = birthdayMusic.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(() => {
+                soundOnIcon.classList.add('hidden');
+                soundOffIcon.classList.remove('hidden');
+            });
+        }
+
+        daySubtitle.textContent = "Feliz Cumpleaños";
+        setTimeout(() => { daySubtitle.style.opacity = '1'; }, 600);
+
+        startCardAnimation();
+    }
+
+    function startCardAnimation() {
+        messageContainer.innerHTML = '';
+        let messageIndex = 0;
+
+        function showNextMessage() {
+            if (messageIndex < BIRTHDAY_MESSAGES.length) {
+                const p = document.createElement('p');
+                
+                if (messageIndex === BIRTHDAY_MESSAGES.length - 1) {
+                    p.className = "text-zinc-100 font-serif-elegant italic text-base md:text-lg pt-6 border-t border-zinc-900/60 w-full max-w-md transition-all duration-700";
+                } else {
+                    p.className = "text-zinc-400 font-light tracking-wide text-xs md:text-sm leading-relaxed px-4";
+                }
+                
+                messageContainer.appendChild(p);
+                typeWriter(p, BIRTHDAY_MESSAGES[messageIndex], 45, () => {
+                    messageIndex++;
+                    setTimeout(showNextMessage, 3400); 
+                });
+            } else {
+                setTimeout(() => {
+                    resetBtn.classList.remove('opacity-0', 'pointer-events-none');
+                }, 1000);
+            }
+        }
+        
+        setTimeout(showNextMessage, 1200); 
+    }
+    </script>
+</body>
+</html>
